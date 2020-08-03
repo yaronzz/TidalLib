@@ -23,7 +23,7 @@ namespace TidalLib
 
     public class Album : Screen
     {
-        public int      ID { get; set; }
+        public string   ID { get; set; }
         public string   Title { get; set; }
         public int      Duration { get; set; }
         public bool     StreamReady { get; set; }
@@ -69,6 +69,7 @@ namespace TidalLib
     {
         public int      ID { get; set; }
         public string   Title { get; set; }
+        public string   DisplayTitle { get; set; }
         public int      Duration { get; set; }
         public string   ReplayGain { get; set; }
         public string   Peak { get; set; }

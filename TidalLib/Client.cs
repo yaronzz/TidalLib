@@ -67,7 +67,7 @@ namespace TidalLib
                 header = $"authorization:Bearer {oKey.AccessToken}";
 
             Result result = await HttpHelper.GetOrPostAsync(BASE_URL + sPath + paras, Header: header, Retry: iRetry, Proxy: oKey.Proxy);
-            if (result.Errresponse.IsNotBlank())
+            if (result.Success == false)
             {
                 TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
                 string msg = respon.UserMessage + "! ";
@@ -124,9 +124,60 @@ namespace TidalLib
 
         #region Tool
 
-        private static string GetCoverUrl(string sID)
+        public static string GetCoverUrl(string sID, string iWidth = "320", string iHeight = "320")
         {
-            return string.Format("https://resources.tidal.com/images/{0}/{1}x{1}.jpg", sID.Replace('-', '/'), "320");
+            if (sID == null)
+                return null;
+            return string.Format("https://resources.tidal.com/images/{0}/{1}x{2}.jpg", sID.Replace('-', '/'), iWidth, iHeight);
+        }
+
+        public static string GetArtists(ObservableCollection<Artist> Artists)
+        {
+            List<string> names = new List<string>();
+            foreach (var item in Artists)
+                names.Add(item.Name);
+
+            string ret = string.Join(" / ", names.ToArray());
+            return ret;
+        }
+
+        public static string GetFlag(object data, eType type, bool bShort = true)
+        {
+            bool bMaster = false;
+            bool bExplicit = false;
+
+            if (type == eType.ALBUM)
+            {
+                Album album = (Album)data;
+                if (album.AudioQuality == "HI_RES")
+                    bMaster = true;
+                if (album.Explicit)
+                    bExplicit = true;
+            }
+            else if (type == eType.TRACK)
+            {
+                Track track = (Track)data;
+                if (track.AudioQuality == "HI_RES")
+                    bMaster = true;
+                if (track.Explicit)
+                    bExplicit = true;
+            }
+            else if (type == eType.VIDEO)
+            {
+                Video video = (Video)data;
+                if (video.Explicit)
+                    bExplicit = true;
+            }
+
+            if (bMaster == false && bExplicit == false)
+                return null;
+
+            List<string> flags = new List<string>();
+            if (bMaster)
+                flags.Add(bShort ? "M" : "Master");
+            if (bExplicit)
+                flags.Add(bShort ? "E" : "Explicit");
+            return string.Join(" / ", flags.ToArray());
         }
 
         private static string GetQualityString(eAudioQuality eQuality)
@@ -184,7 +235,7 @@ namespace TidalLib
                 {"clientUniqueKey", Guid.NewGuid().ToString().Replace("-","").Substring(0, 16)} };
 
             Result result = await HttpHelper.GetOrPostAsync(BASE_URL + "login/username", data, Proxy: oProxy);
-            if (result.Errresponse.IsNotBlank())
+            if (result.Success == false)
             {
                 TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
                 if(respon != null)
@@ -202,7 +253,7 @@ namespace TidalLib
         public static async Task<(string, LoginKey)> Login(string sAccessToken, HttpHelper.ProxyInfo oProxy = null)
         {
             Result result = await HttpHelper.GetOrPostAsync("https://api.tidal.com/v1/sessions", Header: $"authorization:Bearer {sAccessToken}", Proxy: oProxy);
-            if (result.Errresponse.IsNotBlank())
+            if (result.Success == false)
             {
                 TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
                 return (respon.UserMessage, null);
@@ -219,7 +270,6 @@ namespace TidalLib
             (string msg, Album data) = await Request<Album>(oKey, "albums/" + ID);
             if (data != null)
             {
-                data.CoverUrl = GetCoverUrl(data.Cover);
                 if (bGetItems)
                     (msg, data.Tracks, data.Videos) = await GetItems(oKey, ID);
             }
@@ -232,7 +282,6 @@ namespace TidalLib
             (string msg, Playlist data) = await Request<Playlist>(oKey, "playlists/" + ID);
             if (data != null)
             {
-                data.CoverUrl = GetCoverUrl(data.SquareImage);
                 if (bGetItems)
                     (msg, data.Tracks, data.Videos) = await GetItems(oKey, ID, eType.PLAYLIST);
             }
@@ -280,8 +329,6 @@ namespace TidalLib
             if (msg.IsNotBlank() || data == null)
                 return (msg, null);
 
-            data.CoverUrl = GetCoverUrl(data.Picture);
-
             //get albums
             (msg, data.Albums) = await RequestItems<Album>(oKey, "artists/" + ID + "/albums");
             if (data.Albums == null)
@@ -295,8 +342,12 @@ namespace TidalLib
                     data.Albums.Add(item);
             }
 
-            foreach (var item in data.Albums)
-                (msg, item.Tracks, item.Videos) = await GetItems(oKey, item.ID);
+            //get items
+            if (bGetItems)
+            {
+                foreach (var item in data.Albums)
+                    (msg, item.Tracks, item.Videos) = await GetItems(oKey, item.ID);
+            }
             return (null, data);
         }
 
@@ -335,8 +386,6 @@ namespace TidalLib
         public static async Task<(string, Video)> GetVideo(LoginKey oKey, string ID)
         {
             (string msg, Video data) = await Request<Video>(oKey, "videos/" + ID);
-            if (data != null)
-                data.CoverUrl = GetCoverUrl(data.ImageID);
             return (msg, data);
         }
 
@@ -376,6 +425,38 @@ namespace TidalLib
             return (msg, null);
         }
 
+        public static (string, eType) ParseUrl(string url)
+        {
+            /* example
+             * https://tidal.com/browse/track/126205001
+             * https://tidal.com/browse/video/124586613
+             * https://tidal.com/browse/album/88107428
+             * https://tidal.com/browse/artist/9433250
+             * https://tidal.com/browse/track/126205001
+             * https://tidal.com/browse/playlist/3f199d1d-5fcd-458c-ac4e-906e77981f34
+             * https://listen.tidal.com/playlist/3f199d1d-5fcd-458c-ac4e-906e77981f34
+             */
+            if (url.Contains("tidal.com") == false)
+                return (url, eType.NONE);
+
+            string type = null;
+            eType etype = eType.NONE;
+            Dictionary<int, string> list = AIGS.Common.Convert.ConverEnumToDictionary(typeof(eType), false);
+            foreach (var item in list)
+            {
+                if (url.Contains(item.Value.ToLower()))
+                {
+                    type = item.Value.ToLower();
+                    etype = (eType)item.Key;
+                }
+            }
+            if (etype == eType.NONE)
+                return (url, eType.NONE);
+
+            string id = StringHelper.GetSubString(url, type + "/", "/");
+            return (id, etype);
+        }
+
         public static async Task<(string, SearchResult)> Search(LoginKey oKey, string sTex, int iLimit = 10, eType eType = eType.NONE)
         {
             string types = "ARTISTS,ALBUMS,TRACKS,VIDEOS,PLAYLISTS";
@@ -410,38 +491,46 @@ namespace TidalLib
             return (null, result);
         }
 
-        public static (string, eType) ParseUrl(string url)
+        public static async Task<(string, eType, object)> Get(LoginKey oKey, string sTex, eType intype = eType.NONE, int iLimit = 10, bool GetArtistEPSingle = true, bool bGetArtistItems = false)
         {
-            /* example
-             * https://tidal.com/browse/track/126205001
-             * https://tidal.com/browse/video/124586613
-             * https://tidal.com/browse/album/88107428
-             * https://tidal.com/browse/artist/9433250
-             * https://tidal.com/browse/track/126205001
-             * https://tidal.com/browse/playlist/3f199d1d-5fcd-458c-ac4e-906e77981f34
-             * https://listen.tidal.com/playlist/3f199d1d-5fcd-458c-ac4e-906e77981f34
-             */
-            if (url.Contains("tidal.com") == false)
-                return (url, eType.NONE);
-
-            string type = null;
-            eType etype = eType.NONE;
-            Dictionary<int, string> list = AIGS.Common.Convert.ConverEnumToDictionary(typeof(eType), false);
-            foreach (var item in list)
+            (string id, eType type) = ParseUrl(sTex);
+            if(intype != eType.NONE)
             {
-                if(url.Contains(item.Value.ToLower()))
-                {
-                    type = item.Value.ToLower();
-                    etype = (eType)item.Key;
-                }
+                type = intype;
+                id = sTex;
             }
-            if(etype == eType.NONE)
-                return (url, eType.NONE);
 
-            string id = StringHelper.GetSubString(url, type + "/", "/");
-            return (id, etype);
+            if (type == eType.ALBUM)
+            {
+                (string msg, Album album) = await GetAlbum(oKey, id);
+                return (msg, type, album);
+            }
+            else if (type == eType.PLAYLIST)
+            {
+                (string msg, Playlist playlist) = await GetPlaylist(oKey, id);
+                return (msg, type, playlist);
+            }
+            else if (type == eType.TRACK)
+            {
+                (string msg, Track track) = await GetTrack(oKey, id);
+                return (msg, type, track);
+            }
+            else if (type == eType.VIDEO)
+            {
+                (string msg, Video video) = await GetVideo(oKey, id);
+                return (msg, type, video);
+            }
+            else if (type == eType.ARTIST)
+            {
+                (string msg, Artist artist) = await GetArtist(oKey, id, GetArtistEPSingle, bGetArtistItems);
+                return (msg, type, artist);
+            }
+            else
+            {
+                (string msg, SearchResult result) = await Search(oKey, sTex, iLimit);
+                return (msg, eType.SEARCH, result);
+            }
         }
-    }
 
-    
+    }
 }

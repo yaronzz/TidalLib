@@ -44,7 +44,13 @@ namespace TidalLib
         public string   AudioQuality { get; set; }
         public Artist   Artist { get; set; }
         public string[] AudioModes { get; set; }
-        public string   CoverUrl { get; set; }
+
+        public string DurationStr { get { return TimeHelper.ConverIntToString(Duration); } }
+        public string CoverUrl { get { return Client.GetCoverUrl(Cover); } }
+        public string ArtistsName { get { return Client.GetArtists(Artists); } }
+        public string Flag { get { return Client.GetFlag(this, eType.ALBUM, false); } }
+        public string FlagShort { get { return Client.GetFlag(this, eType.ALBUM, true); } }
+
         public ObservableCollection<Artist> Artists { get; set; }
         public ObservableCollection<Track> Tracks { get; set; }
         public ObservableCollection<Video> Videos { get; set; }
@@ -59,7 +65,9 @@ namespace TidalLib
         public string   Picture { get; set; }
         public int      Popularity { get; set; }
         public string[] ArtistTypes { get; set; }
-        public string   CoverUrl { get; set; }
+
+        public string CoverUrl { get { return Client.GetCoverUrl(Picture); } }
+
         public ObservableCollection<Album> Albums { get; set; }
     }
 
@@ -88,6 +96,12 @@ namespace TidalLib
         public Artist   Artist { get; set; }
         public Album    Album { get; set; }
         public string[] AudioModes { get; set; }
+
+        public string DurationStr { get { return TimeHelper.ConverIntToString(Duration); } }
+        public string ArtistsName { get { return Client.GetArtists(Artists); } }
+        public string Flag { get { return Client.GetFlag(this, eType.TRACK, false); } }
+        public string FlagShort { get { return Client.GetFlag(this, eType.TRACK, true); } }
+
         public ObservableCollection<Artist> Artists { get; set; }
     }
 
@@ -114,7 +128,6 @@ namespace TidalLib
         public string ID { get; set; }
         public string Title { get; set; }
         public int    Duration { get; set; }
-        public string DurationStr { get; set; }
         public string ImageID { get; set; }
         public int    TrackNumber { get; set; }
         public string ReleaseDate { get; set; }
@@ -124,7 +137,13 @@ namespace TidalLib
         public bool   Explicit { get; set; }
         public Artist Artist { get; set; }
         public Album  Album { get; set; }
-        public string CoverUrl { get; set; }
+
+        public string DurationStr { get { return TimeHelper.ConverIntToString(Duration); } }
+        public string CoverUrl { get { return Client.GetCoverUrl(ImageID); } }
+        public string ArtistsName { get { return Client.GetArtists(Artists); } }
+        public string Flag { get { return Client.GetFlag(this, eType.VIDEO, false); } }
+        public string FlagShort { get { return Client.GetFlag(this, eType.VIDEO, true); } }
+
         public ObservableCollection<Artist> Artists { get; set; }
     }
 
@@ -136,7 +155,6 @@ namespace TidalLib
         public int    NumberOfVideos { get; set; }
         public string Description { get; set; }
         public int    Duration { get; set; }
-        public string DurationStr { get; set; }
         public string LastUpdated { get; set; }
         public string Created { get; set; }
         public string Type { get; set; }
@@ -145,7 +163,10 @@ namespace TidalLib
         public string SquareImage { get; set; }
         public bool   PublicPlaylist { get; set; }
         public int    Popularity { get; set; }
-        public string CoverUrl { get; set; }
+
+        public string DurationStr { get { return TimeHelper.ConverIntToString(Duration); } }
+        public string CoverUrl { get { return Client.GetCoverUrl(SquareImage); } }
+
         public ObservableCollection<Track> Tracks { get; set; }
         public ObservableCollection<Video> Videos { get; set; }
     }

@@ -2,3 +2,6 @@
 /TidalLib/obj
 /TidalLib/Test.cs
 /TidalLib/packages
+TidalLib/TidalLib.1.0.0.1.nupkg
+TidalLib/TidalLib.nuspec
+TidalLib/.vs/TidalLib/v16/.suo

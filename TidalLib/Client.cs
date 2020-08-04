@@ -13,6 +13,11 @@ namespace TidalLib
 {
     public class Client
     {
+        /* From:https://github.com/arnesongit/plugin.audio.tidal2
+         * wc8j_yBJd20zOmx0 :download FLAC(only hifi), but cant download video
+         * _DSTon1kC8pABnTw :download video, but uses ALAC instead of FLAC(only hifi)
+         */
+
         private static string TOKEN = "wc8j_yBJd20zOmx0";
         private static string BASE_URL = "https://api.tidalhifi.com/v1/";
         private static string VERSION = "1.9.1";
@@ -22,6 +27,28 @@ namespace TidalLib
             public string Status { get; set; }
             public string SubStatus { get; set; }
             public string UserMessage { get; set; }
+        }
+
+        private class TidalStreamRespon
+        {
+            public string TrackID { get; set; }
+            public string VideoID { get; set; }
+            public string StreamType { get; set; }
+            public string AssetPresentation { get; set; }
+            public string AudioMode { get; set; }
+            public string AudioQuality { get; set; }
+            public string VideoQuality { get; set; }
+            public string ManifestMimeType { get; set; }
+            public string Manifest { get; set; }
+        }
+
+        private class TidalManifest
+        {
+            public string MimeType { get; set; }
+            public string Codecs { get; set; }
+            public string EncryptionType { get; set; }
+            public string KeyID { get; set; }
+            public string[] Urls { get; set; }
         }
 
         #region Request
@@ -102,14 +129,14 @@ namespace TidalLib
             return string.Format("https://resources.tidal.com/images/{0}/{1}x{1}.jpg", sID.Replace('-', '/'), "320");
         }
 
-        private static string GetQualityString(eSoundQuality eQuality)
+        private static string GetQualityString(eAudioQuality eQuality)
         {
             switch(eQuality)
             {
-                case eSoundQuality.Normal: return "LOW";
-                case eSoundQuality.High: return "HIGH";
-                case eSoundQuality.HiFi: return "LOSSLESS";
-                case eSoundQuality.Master: return "HI_RES";
+                case eAudioQuality.Normal: return "LOW";
+                case eAudioQuality.High: return "HIGH";
+                case eAudioQuality.HiFi: return "LOSSLESS";
+                case eAudioQuality.Master: return "HI_RES";
             }
             return null;
         }
@@ -119,6 +146,30 @@ namespace TidalLib
             if(track.Version != null && track.Version.IsNotBlank())
                 return $"{track.Title} - {track.Version}";
             return track.Title;
+        }
+
+        private static List<VideoStreamUrl> GetResolutionList(string url)
+        {
+            List<VideoStreamUrl> ret = new List<VideoStreamUrl>();
+            string text = NetHelper.DownloadString(url);
+            string[] array = text.Split("#EXT-X-STREAM-INF");
+            foreach (var item in array)
+            {
+                if (item.Contains("RESOLUTION=") == false)
+                    continue;
+
+                string codec = StringHelper.GetSubString(item, "CODECS=\"", "\"");
+                string reso = StringHelper.GetSubString(item, "RESOLUTION=", "http").Trim();
+                string surl = "http" + StringHelper.GetSubStringOnlyStart(item, "http").Trim();
+                ret.Add(new VideoStreamUrl()
+                {
+                    Codec = codec,
+                    Resolution = reso,
+                    ResolutionArray = reso.Split("x").ToArray(),
+                    M3u8Url = surl,
+                });
+            }
+            return ret;
         }
 
         #endregion
@@ -136,7 +187,9 @@ namespace TidalLib
             if (result.Errresponse.IsNotBlank())
             {
                 TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
-                return (respon.UserMessage, null);
+                if(respon != null)
+                    return (respon.UserMessage, null);
+                return (null, null);
             }
 
             LoginKey key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
@@ -146,6 +199,20 @@ namespace TidalLib
             return (null, key);
         }
 
+        public static async Task<(string, LoginKey)> Login(string sAccessToken, HttpHelper.ProxyInfo oProxy = null)
+        {
+            Result result = await HttpHelper.GetOrPostAsync("https://api.tidal.com/v1/sessions", Header: $"authorization:Bearer {sAccessToken}", Proxy: oProxy);
+            if (result.Errresponse.IsNotBlank())
+            {
+                TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
+                return (respon.UserMessage, null);
+            }
+
+            LoginKey key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
+            key.AccessToken = sAccessToken;
+            key.Proxy = oProxy;
+            return (null, key);
+        }
 
         public static async Task<(string, Album)> GetAlbum(LoginKey oKey, string ID, bool bGetItems = true)
         {
@@ -167,7 +234,7 @@ namespace TidalLib
             {
                 data.CoverUrl = GetCoverUrl(data.SquareImage);
                 if (bGetItems)
-                    (msg, data.Tracks, data.Videos) = await GetItems(oKey, ID, eObjectType.PLAYLIST);
+                    (msg, data.Tracks, data.Videos) = await GetItems(oKey, ID, eType.PLAYLIST);
             }
             return (null, data);
         }
@@ -179,10 +246,10 @@ namespace TidalLib
         /// <param name="ID"></param>
         /// <param name="eType"></param>
         /// <returns></returns>
-        public static async Task<(string, ObservableCollection<Track>, ObservableCollection<Video>)> GetItems(LoginKey oKey, string ID, eObjectType eType = eObjectType.ALBUM)
+        public static async Task<(string, ObservableCollection<Track>, ObservableCollection<Video>)> GetItems(LoginKey oKey, string ID, eType eType = eType.ALBUM)
         {
             string type = "albums/";
-            if (eType == eObjectType.PLAYLIST)
+            if (eType == eType.PLAYLIST)
                 type = "playlists/";
 
             (string msg, ObservableCollection<object> data) = await RequestItems<object>(oKey, type + ID + "/items");
@@ -196,7 +263,7 @@ namespace TidalLib
                 if (JsonHelper.GetValue(item.ToString(), "type") == "track")
                 {
                     Track track = JsonHelper.ConverStringToObject<Track>(item.ToString(), "item");
-                    track.DisplayName = GetTrackDisplayTitle(track);
+                    track.DisplayTitle = GetTrackDisplayTitle(track);
                     tracks.Add(track);
                 }
                 else
@@ -239,7 +306,30 @@ namespace TidalLib
             (string msg, Track data) = await Request<Track>(oKey, "tracks/" + ID);
             if (data != null)
                 data.DisplayTitle = GetTrackDisplayTitle(data);
-            return (null, data);
+            return (msg, data);
+        }
+
+        public static async Task<(string, StreamUrl)> GetTrackStreamUrl(LoginKey oKey, string ID, eAudioQuality eQuality)
+        {
+            string quality = GetQualityString(eQuality);
+            (string msg, TidalStreamRespon resp) = await Request<TidalStreamRespon>(oKey, "tracks/" + ID + "/playbackinfopostpaywall", new Dictionary<string, string>() { { "audioquality", quality }, { "playbackmode", "STREAM" }, { "assetpresentation", "FULL" } }, 3);
+            if (resp != null)
+            {
+                string manifest = StringHelper.Base64Decode(resp.Manifest);
+                if (resp.ManifestMimeType.Contains("vnd.tidal.bt"))
+                {
+                    TidalManifest tmanifest = JsonHelper.ConverStringToObject<TidalManifest>(manifest);
+                    return (null, new StreamUrl()
+                    {
+                        TrackID = resp.TrackID,
+                        Url = tmanifest.Urls[0],
+                        Codec = tmanifest.Codecs,
+                        EncryptionKey = tmanifest.KeyID,
+                        SoundQuality = resp.AudioQuality,
+                    });
+                }
+            }
+            return (msg, null);
         }
 
         public static async Task<(string, Video)> GetVideo(LoginKey oKey, string ID)
@@ -247,19 +337,110 @@ namespace TidalLib
             (string msg, Video data) = await Request<Video>(oKey, "videos/" + ID);
             if (data != null)
                 data.CoverUrl = GetCoverUrl(data.ImageID);
-            return (null, data);
+            return (msg, data);
         }
 
-        //public static async Task<(string, StreamUrl)> GetTrackStreamUrl(LoginKey oKey, string ID, eSoundQuality eQuality)
-        //{
-        //    string quality = GetQualityString(eQuality);
-        //    (string msg, object resp) = await Request<object>(oKey, "tracks/" + ID + "/playbackinfopostpaywall", new Dictionary<string, string>() { { "audioquality", quality }, { "playbackmode", "STREAM" }, { "assetpresentation", "FULL" } }, 3);
-        //    if(resp != null)
-        //    {
+        public static async Task<(string, List<VideoStreamUrl>)> GetVideStreamUrls(LoginKey oKey, string ID)
+        {
+            (string msg, TidalStreamRespon resp) = await Request<TidalStreamRespon>(oKey, "videos/" + ID + "/playbackinfopostpaywall", new Dictionary<string, string>() { { "videoquality", "HIGH" }, { "playbackmode", "STREAM" }, { "assetpresentation", "FULL" } }, 3);
+            if (resp != null)
+            {
+                string manifest = StringHelper.Base64Decode(resp.Manifest);
+                if (resp.ManifestMimeType.Contains("vnd.tidal.emu"))
+                {
+                    TidalManifest tmanifest = JsonHelper.ConverStringToObject<TidalManifest>(manifest);
+                    List<VideoStreamUrl> list = GetResolutionList(tmanifest.Urls[0]);
+                    return (null, list);
+                }
+            }
+            return (msg, null);
+        }
 
-        //    }
-        //    (string msg2, StreamUrl data) = await Request<StreamUrl>(oKey, "tracks/" + ID + "/streamUrl", new Dictionary<string, string>() { { "soundQuality", quality } });
-        //}
+        public static async Task<(string, VideoStreamUrl)> GetVideStreamUrl(LoginKey oKey, string ID, eVideoQuality eReso)
+        {
+            (string msg, List<VideoStreamUrl> list) = await GetVideStreamUrls(oKey, ID);
+            if(list != null)
+            {
+                int iCmp = (int)eReso;
+                int iIndex = list.Count - 1;
+                for (int i = 0; i < list.Count(); i++)
+                {
+                    if (iCmp >= int.Parse(list[i].ResolutionArray[1]))
+                    {
+                        iIndex = i;
+                        break;
+                    }
+                }
+                return (null, list[iIndex]);
+            }
+            return (msg, null);
+        }
+
+        public static async Task<(string, SearchResult)> Search(LoginKey oKey, string sTex, int iLimit = 10, eType eType = eType.NONE)
+        {
+            string types = "ARTISTS,ALBUMS,TRACKS,VIDEOS,PLAYLISTS";
+            if (eType == eType.ALBUM)
+                types = "ALBUMS";
+            if (eType == eType.ARTIST)
+                types = "ARTISTS";
+            if (eType == eType.TRACK)
+                types = "TRACKS";
+            if (eType == eType.VIDEO)
+                types = "VIDEOS";
+            if (eType == eType.PLAYLIST)
+                types = "PLAYLISTS";
+
+            Dictionary<string, string> data = new Dictionary<string, string>()
+            {
+                { "query", sTex },
+                { "offset", "0" },
+                { "types", types },
+                { "limit", iLimit.ToString()},
+            };
+            (string msg, string res) = await Request(oKey, "search", data);
+            if (msg.IsNotBlank() || res.IsBlank())
+                return (msg, null);
+
+            SearchResult result = new SearchResult();
+            result.Artists = JsonHelper.ConverStringToObject<ObservableCollection<Artist>>(res, "artists", "items");
+            result.Albums = JsonHelper.ConverStringToObject<ObservableCollection<Album>>(res, "albums", "items");
+            result.Tracks = JsonHelper.ConverStringToObject<ObservableCollection<Track>>(res, "tracks", "items");
+            result.Videos = JsonHelper.ConverStringToObject<ObservableCollection<Video>>(res, "videos", "items");
+            result.Playlists = JsonHelper.ConverStringToObject<ObservableCollection<Playlist>>(res, "playlists", "items");
+            return (null, result);
+        }
+
+        public static (string, eType) ParseUrl(string url)
+        {
+            /* example
+             * https://tidal.com/browse/track/126205001
+             * https://tidal.com/browse/video/124586613
+             * https://tidal.com/browse/album/88107428
+             * https://tidal.com/browse/artist/9433250
+             * https://tidal.com/browse/track/126205001
+             * https://tidal.com/browse/playlist/3f199d1d-5fcd-458c-ac4e-906e77981f34
+             * https://listen.tidal.com/playlist/3f199d1d-5fcd-458c-ac4e-906e77981f34
+             */
+            if (url.Contains("tidal.com") == false)
+                return (url, eType.NONE);
+
+            string type = null;
+            eType etype = eType.NONE;
+            Dictionary<int, string> list = AIGS.Common.Convert.ConverEnumToDictionary(typeof(eType), false);
+            foreach (var item in list)
+            {
+                if(url.Contains(item.Value.ToLower()))
+                {
+                    type = item.Value.ToLower();
+                    etype = (eType)item.Key;
+                }
+            }
+            if(etype == eType.NONE)
+                return (url, eType.NONE);
+
+            string id = StringHelper.GetSubString(url, type + "/", "/");
+            return (id, etype);
+        }
     }
 
     

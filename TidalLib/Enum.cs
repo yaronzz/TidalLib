@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace TidalLib
 {
-    public enum eSoundQuality
+    public enum eAudioQuality
     {
         Normal,
         High,
@@ -14,7 +14,7 @@ namespace TidalLib
         Master,
     }
 
-    public enum eResolution
+    public enum eVideoQuality
     {
         P240 = 240,
         P360 = 360,
@@ -23,7 +23,7 @@ namespace TidalLib
         P1080 = 1080,
     }
 
-    public enum eObjectType
+    public enum eType
     {
         ALBUM,
         ARTIST,

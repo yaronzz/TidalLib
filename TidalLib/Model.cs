@@ -1,5 +1,4 @@
 ﻿using AIGS.Helper;
-using Stylet;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -20,8 +19,7 @@ namespace TidalLib
         public HttpHelper.ProxyInfo Proxy { get; set; }
     }
 
-
-    public class Album : Screen
+    public class Album 
     {
         public string   ID { get; set; }
         public string   Title { get; set; }
@@ -52,9 +50,9 @@ namespace TidalLib
         public ObservableCollection<Video> Videos { get; set; }
     }
 
-    public class Artist : Screen
+    public class Artist 
     {
-        public int      ID { get; set; }
+        public string   ID { get; set; }
         public string   Name { get; set; }
         public string   Type { get; set; }
         public string   Url { get; set; }
@@ -65,9 +63,9 @@ namespace TidalLib
         public ObservableCollection<Album> Albums { get; set; }
     }
 
-    public class Track : Screen
+    public class Track 
     {
-        public int      ID { get; set; }
+        public string   ID { get; set; }
         public string   Title { get; set; }
         public string   DisplayTitle { get; set; }
         public int      Duration { get; set; }
@@ -93,9 +91,9 @@ namespace TidalLib
         public ObservableCollection<Artist> Artists { get; set; }
     }
 
-    public class StreamUrl : Screen
+    public class StreamUrl 
     {
-        public int    TrackID { get; set; }
+        public string TrackID { get; set; }
         public string Url { get; set; }
         public string Codec { get; set; }
         public string EncryptionKey { get; set; }
@@ -103,9 +101,17 @@ namespace TidalLib
         public string SoundQuality { get; set; }
     }
 
-    public class Video : Screen
+    public class VideoStreamUrl 
     {
-        public int    ID { get; set; }
+        public string   Codec { get; set; }
+        public string   Resolution { get; set; }
+        public string[] ResolutionArray { get; set; }
+        public string   M3u8Url { get; set; }
+    }
+
+    public class Video 
+    {
+        public string ID { get; set; }
         public string Title { get; set; }
         public int    Duration { get; set; }
         public string DurationStr { get; set; }
@@ -122,13 +128,7 @@ namespace TidalLib
         public ObservableCollection<Artist> Artists { get; set; }
     }
 
-    public class Contributor : Screen
-    {
-        public string Name { get; set; }
-        public string Role { get; set; }
-    }
-
-    public class Playlist : Screen
+    public class Playlist 
     {
         public string UUID { get; set; }
         public string Title { get; set; }
@@ -157,16 +157,5 @@ namespace TidalLib
         public ObservableCollection<Track>    Tracks { get; set; }
         public ObservableCollection<Video>    Videos { get; set; }
         public ObservableCollection<Playlist> Playlists { get; set; }
-    }
-
-    public class Dllist
-    {
-        public ObservableCollection<string> AlbumIds { get; set; }
-        public ObservableCollection<string> TrackIds { get; set; }
-        public ObservableCollection<string> VideoIds { get; set; }
-        public ObservableCollection<string> Urls { get; set; }
-
-        public ObservableCollection<string> ArtistIds { get; set; }
-        public ObservableCollection<string> PlaylistIds { get; set; }
     }
 }

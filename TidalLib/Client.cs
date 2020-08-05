@@ -131,17 +131,26 @@ namespace TidalLib
             return string.Format("https://resources.tidal.com/images/{0}/{1}x{2}.jpg", sID.Replace('-', '/'), iWidth, iHeight);
         }
 
-        public static string GetArtists(ObservableCollection<Artist> Artists)
+        public static string[] GetArtistsList(ObservableCollection<Artist> Artists)
         {
+            if (Artists == null)
+                return null;
             List<string> names = new List<string>();
             foreach (var item in Artists)
                 names.Add(item.Name);
+            return names.ToArray();
+        }
 
-            string ret = string.Join(" / ", names.ToArray());
+        public static string GetArtists(ObservableCollection<Artist> Artists)
+        {
+            if (Artists == null)
+                return null;
+            string[] names = GetArtistsList(Artists);
+            string ret = string.Join(" / ", names);
             return ret;
         }
 
-        public static string GetFlag(object data, eType type, bool bShort = true)
+        public static string GetFlag(object data, eType type, bool bShort = true, string separator = " / ")
         {
             bool bMaster = false;
             bool bExplicit = false;
@@ -170,14 +179,14 @@ namespace TidalLib
             }
 
             if (bMaster == false && bExplicit == false)
-                return null;
+                return "";
 
             List<string> flags = new List<string>();
             if (bMaster)
                 flags.Add(bShort ? "M" : "Master");
             if (bExplicit)
                 flags.Add(bShort ? "E" : "Explicit");
-            return string.Join(" / ", flags.ToArray());
+            return string.Join(separator, flags.ToArray());
         }
 
         private static string GetQualityString(eAudioQuality eQuality)
@@ -499,36 +508,62 @@ namespace TidalLib
                 type = intype;
                 id = sTex;
             }
+            string msg = null;
+            object ret = null;
 
-            if (type == eType.ALBUM)
+            //jump
+            if (type != eType.NONE)
             {
-                (string msg, Album album) = await GetAlbum(oKey, id);
-                return (msg, type, album);
+                switch (type)
+                {
+                    case eType.ARTIST: goto POINT_ARTIST;
+                    case eType.ALBUM: goto POINT_ALBUM;
+                    case eType.TRACK: goto POINT_TRACK;
+                    case eType.VIDEO: goto POINT_VIDEO;
+                }
             }
-            else if (type == eType.PLAYLIST)
+            if (AIGS.Common.Convert.ConverStringToInt(id, -1) == -1)
+                goto POINT_SEARCH;
+
+            POINT_ALBUM:
             {
-                (string msg, Playlist playlist) = await GetPlaylist(oKey, id);
-                return (msg, type, playlist);
+                (msg, ret) = await GetAlbum(oKey, id);
+                if (ret != null)
+                    return (msg, eType.ALBUM, ret);
             }
-            else if (type == eType.TRACK)
+            POINT_TRACK:
             {
-                (string msg, Track track) = await GetTrack(oKey, id);
-                return (msg, type, track);
+                (msg, ret) = await GetTrack(oKey, id);
+                if (ret != null)
+                    return (msg, eType.TRACK, ret);
             }
-            else if (type == eType.VIDEO)
+            POINT_VIDEO:
             {
-                (string msg, Video video) = await GetVideo(oKey, id);
-                return (msg, type, video);
+                (msg, ret) = await GetVideo(oKey, id);
+                if (ret != null)
+                    return (msg, eType.VIDEO, ret);
             }
-            else if (type == eType.ARTIST)
+            POINT_ARTIST:
             {
-                (string msg, Artist artist) = await GetArtist(oKey, id, GetArtistEPSingle, bGetArtistItems);
-                return (msg, type, artist);
+                (msg, ret) = await GetArtist(oKey, id, GetArtistEPSingle, bGetArtistItems);
+                if (ret != null)
+                    return (msg, eType.ARTIST, ret);
             }
-            else
+
+            POINT_SEARCH:
             {
-                (string msg, SearchResult result) = await Search(oKey, sTex, iLimit);
-                return (msg, eType.SEARCH, result);
+                if (id.Contains("-"))
+                {
+                    (msg, ret) = await GetPlaylist(oKey, id);
+                    if (ret != null)
+                        return (msg, eType.PLAYLIST, ret);
+                }
+
+                (msg, ret) = await Search(oKey, sTex, iLimit);
+                if (ret != null)
+                    return (msg, eType.SEARCH, ret);
+
+                return ("Search for nothing!", eType.NONE, null);
             }
         }
 

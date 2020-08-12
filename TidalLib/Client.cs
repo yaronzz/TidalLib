@@ -201,10 +201,10 @@ namespace TidalLib
             return null;
         }
 
-        private static string GetTrackDisplayTitle(Track track)
+        public static string GetDisplayTitle(Track track)
         {
             if(track.Version != null && track.Version.IsNotBlank())
-                return $"{track.Title} - {track.Version}";
+                return $"{track.Title} ({track.Version})";
             return track.Title;
         }
 
@@ -321,7 +321,6 @@ namespace TidalLib
                 if (JsonHelper.GetValue(item.ToString(), "type") == "track")
                 {
                     Track track = JsonHelper.ConverStringToObject<Track>(item.ToString(), "item");
-                    track.DisplayTitle = GetTrackDisplayTitle(track);
                     tracks.Add(track);
                 }
                 else
@@ -364,8 +363,6 @@ namespace TidalLib
         public static async Task<(string,Track)> GetTrack(LoginKey oKey, string ID)
         {
             (string msg, Track data) = await Request<Track>(oKey, "tracks/" + ID);
-            if (data != null)
-                data.DisplayTitle = GetTrackDisplayTitle(data);
             return (msg, data);
         }
 

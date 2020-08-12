@@ -75,7 +75,6 @@ namespace TidalLib
     {
         public string   ID { get; set; }
         public string   Title { get; set; }
-        public string   DisplayTitle { get; set; }
         public int      Duration { get; set; }
         public string   ReplayGain { get; set; }
         public string   Peak { get; set; }
@@ -97,6 +96,7 @@ namespace TidalLib
         public Album    Album { get; set; }
         public string[] AudioModes { get; set; }
 
+        public string DisplayTitle { get { return Client.GetDisplayTitle(this); } }
         public string DurationStr { get { return TimeHelper.ConverIntToString(Duration); } }
         public string ArtistsName { get { return Client.GetArtists(Artists); } }
         public string Flag { get { return Client.GetFlag(this, eType.TRACK, false); } }

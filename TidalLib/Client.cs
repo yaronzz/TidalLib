@@ -124,6 +124,11 @@ namespace TidalLib
 
         #region Tool
 
+        public static (string, string) GetDefaultToken()
+        {
+            return ("wc8j_yBJd20zOmx0", "_DSTon1kC8pABnTw");
+        }
+
         public static string GetCoverUrl(string sID, string iWidth = "320", string iHeight = "320")
         {
             if (sID == null)

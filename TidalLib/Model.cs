@@ -47,6 +47,7 @@ namespace TidalLib
 
         public string DurationStr { get { return TimeHelper.ConverIntToString(Duration); } }
         public string CoverUrl { get { return Client.GetCoverUrl(Cover); } }
+        public string CoverHighUrl { get { return Client.GetCoverUrl(Cover, "1280", "1280"); } }
         public string ArtistsName { get { return Client.GetArtists(Artists); } }
         public string Flag { get { return Client.GetFlag(this, eType.ALBUM, false); } }
         public string FlagShort { get { return Client.GetFlag(this, eType.ALBUM, true); } }
@@ -67,6 +68,7 @@ namespace TidalLib
         public string[] ArtistTypes { get; set; }
 
         public string CoverUrl { get { return Client.GetCoverUrl(Picture); } }
+        public string CoverHighUrl { get { return Client.GetCoverUrl(Picture, "750", "750"); } }
 
         public ObservableCollection<Album> Albums { get; set; }
     }
@@ -140,6 +142,7 @@ namespace TidalLib
 
         public string DurationStr { get { return TimeHelper.ConverIntToString(Duration); } }
         public string CoverUrl { get { return Client.GetCoverUrl(ImageID); } }
+        public string CoverHighUrl { get { return Client.GetCoverUrl(ImageID, "1280", "1280"); } }
         public string ArtistsName { get { return Client.GetArtists(Artists); } }
         public string Flag { get { return Client.GetFlag(this, eType.VIDEO, false); } }
         public string FlagShort { get { return Client.GetFlag(this, eType.VIDEO, true); } }
@@ -166,6 +169,7 @@ namespace TidalLib
 
         public string DurationStr { get { return TimeHelper.ConverIntToString(Duration); } }
         public string CoverUrl { get { return Client.GetCoverUrl(SquareImage); } }
+        public string CoverHighUrl { get { return Client.GetCoverUrl(SquareImage, "1080", "1080"); } }
 
         public ObservableCollection<Track> Tracks { get; set; }
         public ObservableCollection<Video> Videos { get; set; }

@@ -237,6 +237,66 @@ namespace TidalLib
             return ret;
         }
 
+
+        private static string ReadFile(string path)
+        {
+            try
+            {
+                FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                StreamReader sr = new StreamReader(fs, System.Text.Encoding.Default);
+                string ret = sr.ReadToEnd();
+                sr.Close();
+                fs.Close();
+                return ret;
+            }
+            catch
+            {
+                return "";
+            }
+        }
+        public static (string, LoginKey) GetAccessTokenFromTidalDesktop(string sUserID)
+        {
+            SystemHelper.UserFolders folders = SystemHelper.GetUserFolders();
+            string path = folders.AppdataPath + "\\TIDAL\\Logs\\app.log";
+
+            string content = ReadFile(path);
+            if (content.IsBlank())
+                return ("Can't read tidal desktop log file.", null);
+
+            bool bHaveNotMatchID = false;
+            List<string[]> array = new List<string[]>();
+            string[] lines = content.Split("[info] - Session was changed");
+            foreach (var item in lines)
+            {
+                string sjson = item.Split('(')[0];
+                string oAuthAccessToken = JsonHelper.GetValue(sjson, "oAuthAccessToken");
+                if (oAuthAccessToken.IsBlank())
+                    continue;
+                string oAuthRefreshToken = JsonHelper.GetValue(sjson, "oAuthRefreshToken");
+                string userId = JsonHelper.GetValue(sjson, "userId");
+                if (userId != sUserID)
+                {
+                    bHaveNotMatchID = true;
+                    continue;
+                }
+                array.Add(new string[]{ userId, oAuthAccessToken, oAuthRefreshToken});
+            }
+
+            int count = array.Count();
+            if (count <= 0)
+            {
+                if (bHaveNotMatchID)
+                    return ("User mismatch! Please login by the same-account.", null);
+                else
+                    return ("Can't find accesstoken in the tidal desktop log file, please login first.", null);
+            }
+
+            LoginKey key = new LoginKey();
+            key.UserID = array[count - 1][0];
+            key.AccessToken = array[count - 1][1];
+            return ("", key);
+        }
+
         #endregion
 
         public static async Task<(string, LoginKey)> Login(string sUserName, string sPassword, string sToken = null, HttpHelper.ProxyInfo oProxy = null)

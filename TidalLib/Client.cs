@@ -330,6 +330,8 @@ namespace TidalLib
             if (result.Success == false)
             {
                 TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
+                if (respon == null)
+                    return (result.Errmsg, null);
                 return (respon.UserMessage, null);
             }
 

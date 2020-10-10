@@ -225,6 +225,9 @@ namespace TidalLib
 
                 string codec = StringHelper.GetSubString(item, "CODECS=\"", "\"");
                 string reso = StringHelper.GetSubString(item, "RESOLUTION=", "http").Trim();
+                if (reso.IndexOf(',') >= 0)
+                    reso = reso.Split(',')[0];
+
                 string surl = "http" + StringHelper.GetSubStringOnlyStart(item, "http").Trim();
                 ret.Add(new VideoStreamUrl()
                 {

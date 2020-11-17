@@ -6,6 +6,7 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using static AIGS.Helper.HttpHelper;
 
@@ -20,7 +21,9 @@ namespace TidalLib
 
         private static string TOKEN = "wc8j_yBJd20zOmx0";
         private static string BASE_URL = "https://api.tidalhifi.com/v1/";
+        private static string AUTH_URL = "https://auth.tidal.com/v1/oauth2";
         private static string VERSION = "1.9.1";
+        private static Dictionary<string, string> API_KEY = new Dictionary<string, string>() { { "clientId", "aR7gUaTK1ihpXOEP" } , { "clientSecret", "eVWBEkuL2FCjxgjOkR3yK0RYZEbcrMXRc2l8fU3ZCdE=" } };
 
         private class TidalRespon
         {
@@ -302,6 +305,7 @@ namespace TidalLib
 
         #endregion
 
+        #region Login
         public static async Task<(string, LoginKey)> Login(string sUserName, string sPassword, string sToken = null, HttpHelper.ProxyInfo oProxy = null)
         {
             Dictionary<string, string> data = new Dictionary<string, string>() {
@@ -343,6 +347,99 @@ namespace TidalLib
             key.Proxy = oProxy;
             return (null, key);
         }
+
+        #endregion
+
+        #region Login by url
+
+        public static async Task<(string, TidalDeviceCode)> GetDeviceCode(HttpHelper.ProxyInfo oProxy = null)
+        {
+            Result result = await HttpHelper.GetOrPostAsync(AUTH_URL + "/device_authorization", new Dictionary<string, string>(){
+                {"client_id", API_KEY["clientId"]},
+                {"scope","r_usr+w_usr+w_sub"}}, Proxy: oProxy);
+            if (result.Success == false)
+            {
+                TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
+                if (respon == null)
+                    return (result.Errmsg, null);
+                return (respon.UserMessage, null);
+            }
+
+            TidalDeviceCode code = JsonHelper.ConverStringToObject<TidalDeviceCode>(result.sData);
+            return (null, code);
+        }
+
+        public static async Task<(string, LoginKey)> CheckAuthStatus(TidalDeviceCode deviceCode, HttpHelper.ProxyInfo oProxy = null)
+        {
+            string authorization = API_KEY["clientId"] + ":" + API_KEY["clientSecret"];
+            string base64 = System.Convert.ToBase64String(Encoding.Default.GetBytes(authorization));
+            string header = $"Authorization: Basic {base64}";
+
+            DateTime startTime = TimeHelper.GetCurrentTime();
+            while (TimeHelper.CalcConsumeTime(startTime)/1000 < deviceCode.ExpiresIn)
+            {
+                Result result = await HttpHelper.GetOrPostAsync(AUTH_URL + "/token", new Dictionary<string, string>(){
+                    {"client_id", API_KEY["clientId"]},
+                    {"device_code", deviceCode.DeviceCode},
+                    {"grant_type","urn:ietf:params:oauth:grant-type:device_code"},
+                    {"scope","r_usr+w_usr+w_sub"}}, Proxy: oProxy, Header: header);
+                if (result.Success == false)
+                {
+                    TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
+                    string msg = respon.UserMessage + "! ";
+                    if (respon.Status == "400" && JsonHelper.GetValue(result.Errresponse, "sub_status") == "1002")
+                    {
+                        Thread.Sleep(1000 * deviceCode.Interval);
+                        continue;
+                    }
+                    else
+                        msg += "Error while checking for authorization. Trying again...";
+                    return (msg, null);
+                }
+
+                LoginKey key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
+                key.ExpiresIn = JsonHelper.GetValue(result.sData, "expires_in");
+                key.RefreshToken = JsonHelper.GetValue(result.sData, "refresh_token");
+                key.AccessToken = JsonHelper.GetValue(result.sData, "access_token");
+                key.CountryCode = JsonHelper.GetValue(result.sData, "user", "countryCode");
+                key.UserID = JsonHelper.GetValue(result.sData, "user", "userId");
+                key.Proxy = oProxy;
+                return (null, key);
+            }
+
+            return ("Time out.", null);
+        }
+
+        public static async Task<(string, LoginKey)> RefreshAccessToken(string refreshToken, HttpHelper.ProxyInfo oProxy = null)
+        {
+            string authorization = API_KEY["clientId"] + ":" + API_KEY["clientSecret"];
+            string base64 = System.Convert.ToBase64String(Encoding.Default.GetBytes(authorization));
+            string header = $"Authorization: Basic {base64}";
+
+            Result result = await HttpHelper.GetOrPostAsync(AUTH_URL + "/token", new Dictionary<string, string>(){
+                    {"client_id", API_KEY["clientId"]},
+                    {"refresh_token", refreshToken},
+                    {"grant_type","refresh_token"},
+                    {"scope","r_usr+w_usr+w_sub"}}, Proxy: oProxy, Header: header);
+            if (result.Success == false)
+            {
+                TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
+                string msg = respon.UserMessage + "! ";
+                if (respon.Status != "200")
+                    msg += "Refresh failed. Please log in again.";
+                return (msg, null);
+            }
+
+            LoginKey key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
+            key.ExpiresIn = JsonHelper.GetValue(result.sData, "expires_in");
+            key.RefreshToken = refreshToken;
+            key.AccessToken = JsonHelper.GetValue(result.sData, "access_token");
+            key.CountryCode = JsonHelper.GetValue(result.sData, "user", "countryCode");
+            key.UserID = JsonHelper.GetValue(result.sData, "user", "userId");
+            key.Proxy = oProxy;
+            return (null, key);
+        }
+        #endregion
 
         public static async Task<(string, Album)> GetAlbum(LoginKey oKey, string ID, bool bGetItems = true)
         {
@@ -635,4 +732,20 @@ namespace TidalLib
         }
 
     }
+
+
+    //public class Test
+    //{
+    //    static int Main()
+    //    {
+    //        string msg;
+    //        TidalDeviceCode code;
+    //        LoginKey key;
+    //        (msg, code) = Client.GetDeviceCode().Result;
+    //        (msg, key) = Client.CheckAuthStatus(code).Result;
+    //        return 0;
+    //    }
+    //}
 }
+
+

@@ -16,7 +16,18 @@ namespace TidalLib
         public string CountryCode { get; set; }
         public string SessionID { get; set; }
         public string AccessToken { get; set; }
+        public string RefreshToken { get; set; }
+        public string ExpiresIn { get; set; }
         public HttpHelper.ProxyInfo Proxy { get; set; }
+    }
+
+    public class TidalDeviceCode
+    {
+        public string DeviceCode { get; set; }
+        public string UserCode { get; set; }
+        public string VerificationUri { get; set; }
+        public int ExpiresIn { get; set; }
+        public int Interval { get; set; }
     }
 
     public class Album 

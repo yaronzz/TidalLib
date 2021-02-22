@@ -162,6 +162,7 @@ namespace TidalLib
         {
             bool bMaster = false;
             bool bExplicit = false;
+            bool bDolbyAtmos = false;
 
             if (type == eType.ALBUM)
             {
@@ -170,6 +171,8 @@ namespace TidalLib
                     bMaster = true;
                 if (album.Explicit)
                     bExplicit = true;
+                if (album.AudioModes.Contains("DOLBY_ATMOS"))
+                    bDolbyAtmos = true;
             }
             else if (type == eType.TRACK)
             {
@@ -178,6 +181,8 @@ namespace TidalLib
                     bMaster = true;
                 if (track.Explicit)
                     bExplicit = true;
+                if (track.AudioModes.Contains("DOLBY_ATMOS"))
+                    bDolbyAtmos = true;
             }
             else if (type == eType.VIDEO)
             {
@@ -194,6 +199,8 @@ namespace TidalLib
                 flags.Add(bShort ? "M" : "Master");
             if (bExplicit)
                 flags.Add(bShort ? "E" : "Explicit");
+            if (bDolbyAtmos)
+                flags.Add(bShort ? "A" : "Dolby Atmos");
             return string.Join(separator, flags.ToArray());
         }
 
@@ -423,6 +430,9 @@ namespace TidalLib
                     {"scope","r_usr+w_usr+w_sub"}}, Proxy: oProxy, Header: header);
             if (result.Success == false)
             {
+                if (result.Errresponse == null)
+                    return (result.Errmsg, null);
+
                 TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
                 string msg = respon.UserMessage + "! ";
                 if (respon.Status != "200")
@@ -630,7 +640,7 @@ namespace TidalLib
             return (id, etype);
         }
 
-        public static async Task<(string, SearchResult)> Search(LoginKey oKey, string sTex, int iLimit = 10, eType eType = eType.NONE)
+        public static async Task<(string, SearchResult)> Search(LoginKey oKey, string sTex, int iLimit = 10, int offset = 0, eType eType = eType.NONE)
         {
             string types = "ARTISTS,ALBUMS,TRACKS,VIDEOS,PLAYLISTS";
             if (eType == eType.ALBUM)
@@ -647,7 +657,7 @@ namespace TidalLib
             Dictionary<string, string> data = new Dictionary<string, string>()
             {
                 { "query", sTex },
-                { "offset", "0" },
+                { "offset", offset.ToString() },
                 { "types", types },
                 { "limit", iLimit.ToString()},
             };
@@ -664,7 +674,13 @@ namespace TidalLib
             return (null, result);
         }
 
-        public static async Task<(string, eType, object)> Get(LoginKey oKey, string sTex, eType intype = eType.NONE, int iLimit = 10, bool GetArtistEPSingle = true, bool bGetArtistItems = false)
+        public static async Task<(string, eType, object)> Get(LoginKey oKey, 
+            string sTex, 
+            eType intype = eType.NONE, 
+            int iLimit = 10, 
+            bool GetArtistEPSingle = true, 
+            bool bGetArtistItems = false,
+            int iOffset = 0)
         {
             (string id, eType type) = ParseUrl(sTex);
             if(intype != eType.NONE)
@@ -723,7 +739,7 @@ namespace TidalLib
                         return (msg, eType.PLAYLIST, ret);
                 }
 
-                (msg, ret) = await Search(oKey, sTex, iLimit);
+                (msg, ret) = await Search(oKey, sTex, iLimit, iOffset);
                 if (ret != null)
                     return (msg, eType.SEARCH, ret);
 

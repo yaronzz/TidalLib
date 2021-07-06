@@ -477,15 +477,58 @@ namespace TidalLib
         #endregion
 
         #region Lyrics
+        //public static string GetLyrics(string title, string artist)
+        //{
+        //    string paras = $"?q={title} + ',' + {artist}";
+        //    string header = $"Authorization:Bearer vNKbAWAE3rVY_48nRaiOrDcWNLvsxS-Z8qyG5XfEzTOtZvkTfg6P3pxOVlA2BjaW";
+        //    string url = "https://api.genius.com/search";
+        //    var proxy = new HttpHelper.ProxyInfo("127.0.0.1", 10809);
+        //    string errmsg = "";
+        //    var result = HttpHelper.GetOrPost(url + paras, out errmsg, Header: header, Retry: 3, Proxy: proxy);
+        //    if (errmsg.IsNotBlank())
+        //        return "";
+
+        //    JObject jo = JObject.Parse(result.ToString());
+        //    var songId = jo["response"]["hits"][0]["result"]["id"];
+        //    var song_api_url = $"https://api.genius.com/songs/{songId}";
+        //    var result2 = HttpHelper.GetOrPost(song_api_url, out errmsg, Header: header, Retry: 3, Proxy: proxy);
+        //    if (errmsg.IsNotBlank())
+        //        return "";
+
+        //    jo = JObject.Parse(result2.ToString());
+        //    var song_url = jo["response"]["song"]["url"].ToString();
+
+        //    try
+        //    {
+        //        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(song_url.ToString());
+        //        request.Timeout = 30000;
+        //        request.Headers.Set("Pragma", "no-cache");
+        //        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+        //        Stream streamReceive = response.GetResponseStream();
+        //        Encoding encoding = Encoding.GetEncoding("GB2312");
+        //        StreamReader streamReader = new StreamReader(streamReceive, encoding);
+        //        string strResult = streamReader.ReadToEnd();
+        //        var doc = new HtmlDocument();
+        //        doc.LoadHtml(strResult);
+        //        var node = doc.GetElementbyId("annotation-portal-target");
+        //        return node.InnerText;
+        //    }
+        //    catch
+        //    {
+        //        return "";
+        //    }
+        //}
 
         public static string GetLyrics(LoginKey oKey, string title, string artist)
         {
             if (title.IsBlank() || artist.IsBlank())
                 return "";
 
+            string paras = $"?q={title} + ',' + {artist}";
+            string url = "https://api.genius.com/search";
             string header = $"Authorization:Bearer vNKbAWAE3rVY_48nRaiOrDcWNLvsxS-Z8qyG5XfEzTOtZvkTfg6P3pxOVlA2BjaW";
             string errmsg = "";
-            var result = HttpHelper.GetOrPost($"https://api.genius.com/searc?q={title} + ',' + {artist}", 
+            var result = HttpHelper.GetOrPost(url + paras, 
                 out errmsg, 
                 Header: header, 
                 Retry: 3, 
@@ -513,13 +556,15 @@ namespace TidalLib
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(song_url.ToString());
                 request.Timeout = 30000;
                 request.Headers.Set("Pragma", "no-cache");
+                if (oKey.Proxy != null)
+                    request.Proxy = HttpHelper.GetWebProxy(oKey.Proxy);
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
                 Stream streamReceive = response.GetResponseStream();
                 Encoding encoding = Encoding.GetEncoding("GB2312");
                 StreamReader streamReader = new StreamReader(streamReceive, encoding);
                 string strResult = streamReader.ReadToEnd();
                 var doc = new HtmlDocument();
-                doc.LoadHtml(strResult);
+                doc.LoadHtml(strResult.Replace("<br/>", "\n"));
                 var node = doc.GetElementbyId("annotation-portal-target");
                 return node.InnerText;
             }

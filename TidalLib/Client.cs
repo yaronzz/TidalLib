@@ -1,10 +1,13 @@
 ﻿using AIGS.Common;
 using AIGS.Helper;
+using HtmlAgilityPack;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -163,6 +166,8 @@ namespace TidalLib
             bool bMaster = false;
             bool bExplicit = false;
             bool bDolbyAtmos = false;
+            List<string> tmpList = new List<string>();
+
 
             if (type == eType.ALBUM)
             {
@@ -173,6 +178,8 @@ namespace TidalLib
                     bExplicit = true;
                 if (album.AudioModes.Contains("DOLBY_ATMOS"))
                     bDolbyAtmos = true;
+
+                tmpList.Add(album.AudioQuality);
             }
             else if (type == eType.TRACK)
             {
@@ -183,24 +190,39 @@ namespace TidalLib
                     bExplicit = true;
                 if (track.AudioModes.Contains("DOLBY_ATMOS"))
                     bDolbyAtmos = true;
+
+                tmpList.Add(track.AudioQuality);
             }
             else if (type == eType.VIDEO)
             {
                 Video video = (Video)data;
                 if (video.Explicit)
                     bExplicit = true;
+
+                tmpList.Add(video.Quality);
             }
 
-            if (bMaster == false && bExplicit == false)
-                return "";
-
             List<string> flags = new List<string>();
-            if (bMaster)
-                flags.Add(bShort ? "M" : "Master");
-            if (bExplicit)
-                flags.Add(bShort ? "E" : "Explicit");
-            if (bDolbyAtmos)
-                flags.Add(bShort ? "A" : "Dolby Atmos");
+            if (bShort)
+            {
+                if (bMaster)
+                    flags.Add("M");
+                if (bExplicit)
+                    flags.Add("E");
+                if (bDolbyAtmos)
+                    flags.Add("A");
+            }
+            else
+            {
+                if (bExplicit)
+                    flags.Add("Explicit");
+                if (bDolbyAtmos)
+                    flags.Add("Dolby Atmos");
+                flags.AddRange(tmpList);
+            }
+
+            if (flags.Count < 0)
+                return "";
             return string.Join(separator, flags.ToArray());
         }
 
@@ -227,10 +249,13 @@ namespace TidalLib
         {
             List<VideoStreamUrl> ret = new List<VideoStreamUrl>();
             string text = NetHelper.DownloadString(url);
-            string[] array = text.Split("#EXT-X-STREAM-INF");
+            //string[] array = text.Split("#EXT-X-STREAM-INF");
+            string[] array = text.Split("#");
             foreach (var item in array)
             {
                 if (item.Contains("RESOLUTION=") == false)
+                    continue;
+                if (item.Contains("EXT-X-STREAM-INF:") == false)
                     continue;
 
                 string codec = StringHelper.GetSubString(item, "CODECS=\"", "\"");
@@ -451,6 +476,62 @@ namespace TidalLib
         }
         #endregion
 
+        #region Lyrics
+
+        public static string GetLyrics(LoginKey oKey, string title, string artist)
+        {
+            if (title.IsBlank() || artist.IsBlank())
+                return "";
+
+            string header = $"Authorization:Bearer vNKbAWAE3rVY_48nRaiOrDcWNLvsxS-Z8qyG5XfEzTOtZvkTfg6P3pxOVlA2BjaW";
+            string errmsg = "";
+            var result = HttpHelper.GetOrPost($"https://api.genius.com/searc?q={title} + ',' + {artist}", 
+                out errmsg, 
+                Header: header, 
+                Retry: 3, 
+                Proxy: oKey.Proxy);
+
+            if (errmsg.IsNotBlank())
+                return "";
+
+            JObject jo = JObject.Parse(result.ToString());
+            var songId = jo["response"]["hits"][0]["result"]["id"];
+            var result2 = HttpHelper.GetOrPost($"https://api.genius.com/songs/{songId}", 
+                out errmsg, 
+                Header: header, 
+                Retry: 3, 
+                Proxy: oKey.Proxy);
+
+            if (errmsg.IsNotBlank())
+                return "";
+
+            jo = JObject.Parse(result2.ToString());
+            var song_url = jo["response"]["song"]["url"].ToString();
+
+            try
+            {
+                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(song_url.ToString());
+                request.Timeout = 30000;
+                request.Headers.Set("Pragma", "no-cache");
+                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
+                Stream streamReceive = response.GetResponseStream();
+                Encoding encoding = Encoding.GetEncoding("GB2312");
+                StreamReader streamReader = new StreamReader(streamReceive, encoding);
+                string strResult = streamReader.ReadToEnd();
+                var doc = new HtmlDocument();
+                doc.LoadHtml(strResult);
+                var node = doc.GetElementbyId("annotation-portal-target");
+                return node.InnerText;
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        #endregion
+
+
         public static async Task<(string, Album)> GetAlbum(LoginKey oKey, string ID, bool bGetItems = true)
         {
             (string msg, Album data) = await Request<Album>(oKey, "albums/" + ID);
@@ -594,14 +675,13 @@ namespace TidalLib
             if(list != null)
             {
                 int iCmp = (int)eReso;
-                int iIndex = list.Count - 1;
+                int iIndex = 0;
                 for (int i = 0; i < list.Count(); i++)
                 {
                     if (iCmp >= int.Parse(list[i].ResolutionArray[1]))
-                    {
                         iIndex = i;
+                    else
                         break;
-                    }
                 }
                 return (null, list[iIndex]);
             }

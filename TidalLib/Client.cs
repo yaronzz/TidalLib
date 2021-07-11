@@ -477,47 +477,6 @@ namespace TidalLib
         #endregion
 
         #region Lyrics
-        //public static string GetLyrics(string title, string artist)
-        //{
-        //    string paras = $"?q={title} + ',' + {artist}";
-        //    string header = $"Authorization:Bearer vNKbAWAE3rVY_48nRaiOrDcWNLvsxS-Z8qyG5XfEzTOtZvkTfg6P3pxOVlA2BjaW";
-        //    string url = "https://api.genius.com/search";
-        //    var proxy = new HttpHelper.ProxyInfo("127.0.0.1", 10809);
-        //    string errmsg = "";
-        //    var result = HttpHelper.GetOrPost(url + paras, out errmsg, Header: header, Retry: 3, Proxy: proxy);
-        //    if (errmsg.IsNotBlank())
-        //        return "";
-
-        //    JObject jo = JObject.Parse(result.ToString());
-        //    var songId = jo["response"]["hits"][0]["result"]["id"];
-        //    var song_api_url = $"https://api.genius.com/songs/{songId}";
-        //    var result2 = HttpHelper.GetOrPost(song_api_url, out errmsg, Header: header, Retry: 3, Proxy: proxy);
-        //    if (errmsg.IsNotBlank())
-        //        return "";
-
-        //    jo = JObject.Parse(result2.ToString());
-        //    var song_url = jo["response"]["song"]["url"].ToString();
-
-        //    try
-        //    {
-        //        HttpWebRequest request = (HttpWebRequest)WebRequest.Create(song_url.ToString());
-        //        request.Timeout = 30000;
-        //        request.Headers.Set("Pragma", "no-cache");
-        //        HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-        //        Stream streamReceive = response.GetResponseStream();
-        //        Encoding encoding = Encoding.GetEncoding("GB2312");
-        //        StreamReader streamReader = new StreamReader(streamReceive, encoding);
-        //        string strResult = streamReader.ReadToEnd();
-        //        var doc = new HtmlDocument();
-        //        doc.LoadHtml(strResult);
-        //        var node = doc.GetElementbyId("annotation-portal-target");
-        //        return node.InnerText;
-        //    }
-        //    catch
-        //    {
-        //        return "";
-        //    }
-        //}
 
         public static string GetLyrics(LoginKey oKey, string title, string artist)
         {
@@ -565,8 +524,29 @@ namespace TidalLib
                 string strResult = streamReader.ReadToEnd();
                 var doc = new HtmlDocument();
                 doc.LoadHtml(strResult.Replace("<br/>", "\n"));
-                var node = doc.GetElementbyId("annotation-portal-target");
-                return node.InnerText;
+
+                string text = "";
+                var node = doc.DocumentNode.SelectNodes("//div[@class='lyrics']");
+                if (node != null)
+                    text = node[0].InnerText;
+                else
+                {
+                    node = doc.DocumentNode.SelectNodes("//div[contains(@class,'Lyrics__Root')]");
+                    var childs = node[0].SelectNodes("//div[contains(@class,'Lyrics__Container-sc')]");
+                    if (childs != null)
+                    {
+                        foreach(var item in childs)
+                            text += item.InnerText;
+                    }
+                }
+
+                if (text.IsBlank())
+                    return "";
+
+                text = text.Replace("<br>", "\n").Replace("&#x27;", "'");
+                text = System.Text.RegularExpressions.Regex.Replace(text, @"(\[.*?\])*", "");
+                text = text.TrimStart('\n', ' ');
+                return text;
             }
             catch
             {
@@ -879,11 +859,33 @@ namespace TidalLib
     //{
     //    static int Main()
     //    {
-    //        string msg;
-    //        TidalDeviceCode code;
-    //        LoginKey key;
-    //        (msg, code) = Client.GetDeviceCode().Result;
-    //        (msg, key) = Client.CheckAuthStatus(code).Result;
+    //        //string msg;
+    //        //TidalDeviceCode code;
+    //        //LoginKey key;
+    //        //(msg, code) = Client.GetDeviceCode().Result;
+    //        //(msg, key) = Client.CheckAuthStatus(code).Result;
+
+    //        string ff = "[test] i am [jiasdkfl] yaronzz.";
+    //        ff = System.Text.RegularExpressions.Regex.Replace(ff, @"[^\d]*", "");
+
+    //        try
+    //        {
+    //            string strResult = File.ReadAllText(@"C:\Users\Yaron\Desktop\lyrics.html");
+    //            var doc = new HtmlDocument();
+    //            doc.LoadHtml(strResult.Replace("<br/>", "\n"));
+
+    //            var ulS = doc.DocumentNode.SelectNodes("//div[contains(@class,'lyrics')]");
+    //            var node = doc.DocumentNode.SelectNodes("//div[@class='lyrics']");
+    //            if (node == null)
+    //                node = doc.DocumentNode.SelectNodes("//div[contains(@class,'Lyrics__Root')]");
+
+    //            return 0;
+    //        }
+    //        catch
+    //        {
+    //            return 0;
+    //        }
+
     //        return 0;
     //    }
     //}

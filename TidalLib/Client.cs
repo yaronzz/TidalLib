@@ -483,35 +483,36 @@ namespace TidalLib
             if (title.IsBlank() || artist.IsBlank())
                 return "";
 
-            string paras = $"?q={title} + ',' + {artist}";
-            string url = "https://api.genius.com/search";
-            string header = $"Authorization:Bearer vNKbAWAE3rVY_48nRaiOrDcWNLvsxS-Z8qyG5XfEzTOtZvkTfg6P3pxOVlA2BjaW";
-            string errmsg = "";
-            var result = HttpHelper.GetOrPost(url + paras, 
-                out errmsg, 
-                Header: header, 
-                Retry: 3, 
-                Proxy: oKey.Proxy);
-
-            if (errmsg.IsNotBlank())
-                return "";
-
-            JObject jo = JObject.Parse(result.ToString());
-            var songId = jo["response"]["hits"][0]["result"]["id"];
-            var result2 = HttpHelper.GetOrPost($"https://api.genius.com/songs/{songId}", 
-                out errmsg, 
-                Header: header, 
-                Retry: 3, 
-                Proxy: oKey.Proxy);
-
-            if (errmsg.IsNotBlank())
-                return "";
-
-            jo = JObject.Parse(result2.ToString());
-            var song_url = jo["response"]["song"]["url"].ToString();
-
             try
             {
+                string paras = $"?q={title} + ',' + {artist}";
+                string url = "https://api.genius.com/search";
+                string header = $"Authorization:Bearer vNKbAWAE3rVY_48nRaiOrDcWNLvsxS-Z8qyG5XfEzTOtZvkTfg6P3pxOVlA2BjaW";
+                string errmsg = "";
+                var result = HttpHelper.GetOrPost(url + paras, 
+                    out errmsg, 
+                    Header: header, 
+                    Retry: 3, 
+                    Proxy: oKey.Proxy);
+
+                if (errmsg.IsNotBlank())
+                    return "";
+
+                JObject jo = JObject.Parse(result.ToString());
+                var songId = jo["response"]["hits"][0]["result"]["id"];
+                var result2 = HttpHelper.GetOrPost($"https://api.genius.com/songs/{songId}", 
+                    out errmsg, 
+                    Header: header, 
+                    Retry: 3, 
+                    Proxy: oKey.Proxy);
+
+                if (errmsg.IsNotBlank())
+                    return "";
+
+                jo = JObject.Parse(result2.ToString());
+                var song_url = jo["response"]["song"]["url"].ToString();
+
+            
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(song_url.ToString());
                 request.Timeout = 30000;
                 request.Headers.Set("Pragma", "no-cache");

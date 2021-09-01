@@ -520,8 +520,9 @@ namespace TidalLib
                     request.Proxy = HttpHelper.GetWebProxy(oKey.Proxy);
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
                 Stream streamReceive = response.GetResponseStream();
-                Encoding encoding = Encoding.GetEncoding("GB2312");
-                StreamReader streamReader = new StreamReader(streamReceive, encoding);
+                //Encoding encoding = Encoding.GetEncoding("GB2312");
+                //StreamReader streamReader = new StreamReader(streamReceive, encoding);
+                StreamReader streamReader = new StreamReader(streamReceive);
                 string strResult = streamReader.ReadToEnd();
                 var doc = new HtmlDocument();
                 doc.LoadHtml(strResult.Replace("<br/>", "\n"));

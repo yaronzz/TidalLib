@@ -26,7 +26,8 @@ namespace TidalLib
         private static string BASE_URL = "https://api.tidalhifi.com/v1/";
         private static string AUTH_URL = "https://auth.tidal.com/v1/oauth2";
         private static string VERSION = "1.9.1";
-        private static Dictionary<string, string> API_KEY = new Dictionary<string, string>() { { "clientId", "OmDtrzFgyVVL6uW56OnFA2COiabqm" } , { "clientSecret", "zxen1r3pO0hgtOC7j6twMo9UAqngGrmRiWpV7QC1zJ8=" } };
+        private static Dictionary<string, string> API_KEY = new Dictionary<string, string>() { { "clientId", "8SEZWa4J1NVC5U5Y" } , { "clientSecret", "owUYDkxddz+9FpvGX24DlxECNtFEMBxipU0lBfrbq60=" } };
+        //private static Dictionary<string, string> API_KEY = new Dictionary<string, string>() { { "clientId", "OmDtrzFgyVVL6uW56OnFA2COiabqm" } , { "clientSecret", "zxen1r3pO0hgtOC7j6twMo9UAqngGrmRiWpV7QC1zJ8=" } };
         //private static Dictionary<string, string> API_KEY = new Dictionary<string, string>() { { "clientId", "aR7gUaTK1ihpXOEP" } , { "clientSecret", "eVWBEkuL2FCjxgjOkR3yK0RYZEbcrMXRc2l8fU3ZCdE=" } };
 
         private class TidalRespon

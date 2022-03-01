@@ -1,0 +1,60 @@
+name: TidalLib
+
+on: [push, pull_request]
+
+jobs:
+  Build:
+    name: Build TidalLib
+    runs-on: windows-latest
+
+    steps:
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1.1  
+
+    - name: Checkout TidalLib repo
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+        path: TidalLib
+
+    - name: Checkout AIGS repo
+      uses: actions/checkout@v2
+      with:
+        repository: AIGMix/AIGS
+        path: AIGS
+        
+    - name: Patch AIGS.csproj artifact
+      run: |
+        $File = "AIGS.csproj"
+        (Get-Content $File) -replace "v4.6.1", "v4.8" | Set-Content $File
+        (Get-Content $File) -replace [regex]::escape('..\Tidal-Media-Downloader-PRO\TIDALDL-UI-PRO\'), "" | Set-Content $File
+        (Get-Content $File) -replace [regex]::escape('..\Suda\Suda\'), "" | Set-Content $File
+      working-directory: AIGS
+      
+    - name: Patch TidalLib.csproj artifact
+      run: |
+        $File = "TidalLib.csproj"
+        (Get-Content $File) -replace [regex]::escape('..\..\Tidal-Media-Downloader-PRO\TIDALDL-UI-PRO\'), "" | Set-Content $File
+      working-directory: TidalLib\TidalLib     
+
+    - name: Intall AIGS dependencies
+      run: msbuild -t:restore -p:RestorePackagesConfig=true
+      working-directory: AIGS
+
+    - name: Intall TidalLib dependencies
+      run: msbuild -t:restore -p:RestorePackagesConfig=true
+      working-directory: TidalLib\TidalLib
+
+    - name: Build AIGS artifact
+      run: msbuild AIGS.csproj -verbosity:diag -property:Configuration=Debug
+      working-directory: AIGS
+
+    - name: Build TidalLib artifact
+      run: msbuild TidalLib.csproj -verbosity:diag -property:Configuration=Debug
+      working-directory: TidalLib\TidalLib
+
+    - name: Upload TidalLib artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: TidalLib
+        path: TidalLib\TidalLib\bin\Debug\TidalLib.dll

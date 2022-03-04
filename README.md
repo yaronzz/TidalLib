@@ -9,6 +9,14 @@ OpenTidl is now available on NuGet
 PM> Install-Package TidalLib
 ```
 
+### Nightly Builds
+
+|Download nightly builds from continuous integration: 	| [![Build Status][Build]][Actions] 
+|-------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
+
+[Actions]: https://github.com/yaronzz/TidalLib/actions/workflows/continuous-integration-workflow.yml
+[Build]: https://github.com/yaronzz/TidalLib/actions/workflows/continuous-integration-workflow.yml/badge.svg
+
 ## 🤖 Example 
 
 ### ☑️ Login

@@ -23,20 +23,6 @@ jobs:
         repository: AIGMix/AIGS
         path: AIGS
         
-    - name: Patch AIGS.csproj artifact
-      run: |
-        $File = "AIGS.csproj"
-        (Get-Content $File) -replace "v4.6.1", "v4.8" | Set-Content $File
-        (Get-Content $File) -replace [regex]::escape('..\Tidal-Media-Downloader-PRO\TIDALDL-UI-PRO\'), "" | Set-Content $File
-        (Get-Content $File) -replace [regex]::escape('..\Suda\Suda\'), "" | Set-Content $File
-      working-directory: AIGS
-      
-    - name: Patch TidalLib.csproj artifact
-      run: |
-        $File = "TidalLib.csproj"
-        (Get-Content $File) -replace [regex]::escape('..\..\Tidal-Media-Downloader-PRO\TIDALDL-UI-PRO\'), "" | Set-Content $File
-      working-directory: TidalLib\TidalLib     
-
     - name: Intall AIGS dependencies
       run: msbuild -t:restore -p:RestorePackagesConfig=true
       working-directory: AIGS

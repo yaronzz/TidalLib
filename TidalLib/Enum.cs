@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace TidalLib
+﻿namespace TidalLib
 {
     public enum eAudioQuality
     {
@@ -30,7 +24,6 @@ namespace TidalLib
         PLAYLIST,
         TRACK,
         VIDEO,
-        SEARCH,
         NONE,
     }
 

@@ -76,6 +76,9 @@ namespace TidalLib
                                                             Proxy: proxy);
             if (!result.Success)
             {
+                if (result.Errresponse.IsBlank())
+                    throw new Exception(result.Errmsg);
+
                 TidalRespon respon = JsonHelper.ConverStringToObject<TidalRespon>(result.Errresponse);
                 if (respon.Status == "404" && respon.SubStatus == "2001")
                     throw new Exception("This might be region-locked.");
@@ -170,9 +173,9 @@ namespace TidalLib
             var ret = string.Join(separator, flags.ToArray());
             if (!isShort)
             {
-                ret.Replace("M", "Master");
-                ret.Replace("E", "Explicit");
-                ret.Replace("A", "Dolby Atmos");
+                ret = ret.Replace("M", "Master");
+                ret = ret.Replace("E", "Explicit");
+                ret = ret.Replace("A", "Dolby Atmos");
             }
             return ret;
         }
@@ -242,7 +245,7 @@ namespace TidalLib
                 throw new Exception(respon.UserMessage);
             }
 
-            LoginKey key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
+            this.key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
             key.AccessToken = accessToken;
             return key;
         }
@@ -284,7 +287,7 @@ namespace TidalLib
                     throw new Exception("Error while checking for authorization. Trying again...");
                 }
 
-                LoginKey key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
+                this.key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
                 key.ExpiresIn = JsonHelper.GetValue(result.sData, "expires_in");
                 key.RefreshToken = JsonHelper.GetValue(result.sData, "refresh_token");
                 key.AccessToken = JsonHelper.GetValue(result.sData, "access_token");
@@ -311,7 +314,7 @@ namespace TidalLib
             if (!result.Success)
                 throw new Exception("Refresh failed. Please login again.");
 
-            LoginKey key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
+            this.key = JsonHelper.ConverStringToObject<LoginKey>(result.sData);
             key.ExpiresIn = JsonHelper.GetValue(result.sData, "expires_in");
             key.RefreshToken = refreshToken;
             key.AccessToken = JsonHelper.GetValue(result.sData, "access_token");
@@ -346,7 +349,7 @@ namespace TidalLib
             return await HttpGet<Artist>($"artists/{id}");
         }
 
-        public async Task<TrackLyrics> GetLyrics(string id)
+        public async Task<TrackLyrics> GetTrackLyrics(string id)
         {
             string data = await HttpGet($"tracks/{id}/lyrics", urlpre: "https://listen.tidal.com/v1/");
             return JsonHelper.ConverStringToObject<TrackLyrics>(data);

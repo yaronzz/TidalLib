@@ -12,13 +12,13 @@ jobs:
       uses: microsoft/setup-msbuild@v1.1  
 
     - name: Checkout TidalLib repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         fetch-depth: 0
         path: TidalLib
 
     - name: Checkout AIGS repo
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
       with:
         repository: AIGMix/AIGS
         path: AIGS
@@ -40,7 +40,7 @@ jobs:
       working-directory: TidalLib\TidalLib
 
     - name: Upload TidalLib artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: TidalLib
         path: TidalLib\TidalLib\bin\Debug\TidalLib.dll

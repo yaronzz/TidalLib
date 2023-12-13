@@ -169,6 +169,7 @@ namespace TidalLib
             bool bMaster = false;
             bool bExplicit = false;
             bool bDolbyAtmos = false;
+            bool bRealityAudio = false;
             List<string> tmpList = new List<string>();
 
 
@@ -181,6 +182,8 @@ namespace TidalLib
                     bExplicit = true;
                 if (album.AudioModes.Contains("DOLBY_ATMOS"))
                     bDolbyAtmos = true;
+                else if (album.AudioModes.Contains("SONY_360RA"))
+                    bRealityAudio = true;
 
                 tmpList.Add(album.AudioQuality);
             }
@@ -193,6 +196,8 @@ namespace TidalLib
                     bExplicit = true;
                 if (track.AudioModes.Contains("DOLBY_ATMOS"))
                     bDolbyAtmos = true;
+                else if (track.AudioModes.Contains("SONY_360RA"))
+                    bRealityAudio = true;
 
                 tmpList.Add(track.AudioQuality);
             }
@@ -214,6 +219,8 @@ namespace TidalLib
                     flags.Add("E");
                 if (bDolbyAtmos)
                     flags.Add("A");
+                else if (bRealityAudio)
+                    flags.Add("R");
             }
             else
             {
@@ -221,6 +228,8 @@ namespace TidalLib
                     flags.Add("Explicit");
                 if (bDolbyAtmos)
                     flags.Add("Dolby Atmos");
+                else if (bRealityAudio)
+                    flags.Add("360 Reality Audio");
                 flags.AddRange(tmpList);
             }
 
